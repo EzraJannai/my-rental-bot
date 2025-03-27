@@ -33,9 +33,12 @@ jobs:
         run: |
           python main.py
       - name: Commit updated seen_listings.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
           git add seen_listings.json
           git commit -m "Update seen listings" || echo "No changes to commit"
-          git push
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+          git push origin HEAD:${{ github.ref }}
