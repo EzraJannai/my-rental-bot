@@ -37,12 +37,18 @@ jobs:
         run: |
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
-          # Use the GITHUB_TOKEN to authenticate
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
-          # Pull the latest changes to avoid "rejected" pushes
+      
+          # Stash local changes (like seen_listings.json) so we can safely pull
+          git stash
+      
+          # Pull latest commits from the branch
           git pull origin ${{ github.ref }} --rebase
-          # Commit changes
+      
+          # Re-apply stashed changes
+          git stash pop || echo "No stash to pop"
+      
+          # Stage, commit, and push seen_listings.json
           git add seen_listings.json
           git commit -m "Update seen listings" || echo "No changes to commit"
-          # Push changes
           git push origin HEAD:${{ github.ref }}
