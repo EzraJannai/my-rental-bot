@@ -20,11 +20,8 @@ logger = logging.getLogger('rental_bot')
 
 # Telegram Bot credentials (set these in GitHub Actions secrets)
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "your_default_token")
+# You can provide multiple chat IDs separated by commas.
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "your_default_chat_id")
-
-# Define city and price range variables.
-CITY = "Apeldoorn"
-PRICE_RANGE = "0-1500"
 
 ##############################################
 # Base Scraper Class
@@ -332,18 +329,23 @@ class ListingStorage:
 class NotificationSystem:
     def __init__(self, telegram_token: str, telegram_chat_id: str):
         self.telegram_token = telegram_token
-        self.telegram_chat_id = telegram_chat_id
+        # Allow for multiple chat IDs (comma-separated or list)
+        if isinstance(telegram_chat_id, str):
+            self.telegram_chat_ids = [chat_id.strip() for chat_id in telegram_chat_id.split(",") if chat_id.strip()]
+        else:
+            self.telegram_chat_ids = telegram_chat_id
         self.notified_ids = set()
     
     def send_telegram_message(self, message: str) -> None:
         url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-        payload = {"chat_id": self.telegram_chat_id, "text": message}
-        try:
-            response = requests.post(url, json=payload)
-            response.raise_for_status()
-            logger.info("Telegram notification sent successfully.")
-        except Exception as e:
-            logger.error(f"Error sending telegram message: {e}")
+        for chat_id in self.telegram_chat_ids:
+            payload = {"chat_id": chat_id, "text": message}
+            try:
+                response = requests.post(url, json=payload)
+                response.raise_for_status()
+                logger.info(f"Telegram notification sent successfully to chat id: {chat_id}.")
+            except Exception as e:
+                logger.error(f"Error sending telegram message to chat id {chat_id}: {e}")
     
     def notify_new_listing(self, listing: Dict) -> None:
         if listing['id'] in self.notified_ids:
