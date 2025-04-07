@@ -23,6 +23,9 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "your_default_token")
 # You can provide multiple chat IDs separated by commas.
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "your_default_chat_id")
 
+CITY = "Apeldoorn"
+PRICE_RANGE = "0-1500"
+
 ##############################################
 # Base Scraper Class
 ##############################################
