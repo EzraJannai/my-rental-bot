@@ -179,6 +179,8 @@ class NederwoonScraper(BaseScraper):
                     continue
                 title = a_elem.get_text(strip=True)
                 relative_url = a_elem.get("href", "")
+                if not relative_url:
+                    continue
                 url = relative_url if relative_url.startswith("http") else "https://www.nederwoon.nl" + relative_url
                 address_elem = second_col.find("p", class_="color-medium fixed-lh")
                 address = address_elem.get_text(strip=True) if address_elem else "Address not specified"
