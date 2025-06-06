@@ -5,7 +5,7 @@ import pytest
 from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from main import NederwoonScraper
+from rental_bot.scrapers import NederwoonScraper
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 HTML = (DATA_DIR / "nederwoon_sample.html").read_text()
