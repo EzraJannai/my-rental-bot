@@ -31,3 +31,10 @@ Use `pytest` to run the unit tests:
 ```bash
 pytest
 ```
+
+## Offline development
+
+Sample HTML and JSON files for each scraper are available in `tests/data/`.
+These are snapshots of actual pages from the various rental sites. You can use
+them to develop and test the scrapers offline and to experiment with extracting
+additional fields.

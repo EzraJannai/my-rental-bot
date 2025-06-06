@@ -1,0 +1,12 @@
+{
+  "data": [
+    {
+      "gemeenteGeoLocatieNaam": "Apeldoorn",
+      "street": "Example Street",
+      "houseNumber": "1",
+      "houseNumberAddition": "",
+      "totalRent": "650.00",
+      "urlKey": "example-url-key"
+    }
+  ]
+}
