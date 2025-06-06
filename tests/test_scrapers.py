@@ -4,7 +4,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from main import ParariusScraper, HuurwoningenScraper, Wonen123Scraper
+from rental_bot.scrapers import ParariusScraper, HuurwoningenScraper, Wonen123Scraper
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 

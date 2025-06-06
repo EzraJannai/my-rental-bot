@@ -3,7 +3,7 @@ import sys
 import requests
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from main import NotificationSystem
+from rental_bot.notification import NotificationSystem
 
 def test_send_telegram_message(monkeypatch):
     calls = []

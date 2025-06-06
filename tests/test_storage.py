@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from main import ListingStorage
+from rental_bot.storage import ListingStorage
 
 
 def test_is_new_and_mark(tmp_path):
