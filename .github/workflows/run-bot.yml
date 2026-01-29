@@ -1,4 +1,4 @@
-name: Run Rental Bot Every 5 Minutes
+name: Run Rental Bot
 
 on:
   # This runs on a cron schedule: every 5 minutes
