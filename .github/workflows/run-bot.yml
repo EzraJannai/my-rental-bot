@@ -1,10 +1,8 @@
 name: Run Rental Bot Every 5 Minutes
 
 on:
-  # This runs on a cron schedule: every 5 minutes
-  # schedule:
-  #  - cron: "* * * * 1-5"
-  # Allows you to run the workflow manually via the "Actions" tab
+  schedule:
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
