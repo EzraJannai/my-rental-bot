@@ -47,7 +47,12 @@ def run_bot() -> None:
 
     scrapers = [
         ParariusScraper(pararius_url, source="Pararius"),
-        WoonkeusScraper(source="Woonkeus"),
+        # TODO: Woonkeus migrated from the hexia JSON API (now 404) to the
+        # JS-only zig365 platform. The listings are rendered client-side, so
+        # they can't be fetched with a plain HTTP client anymore — re-enabling
+        # requires a headless browser (e.g. Playwright). Disabled until then so
+        # it doesn't error on every run.
+        # WoonkeusScraper(source="Woonkeus"),
         HuurwoningenScraper(huurwoningen_url, source="Huurwoningen"),
         NederwoonScraper(nederwoon_url, source="Nederwoon"),
         Wonen123Scraper(wonen123_url, source="123Wonen"),

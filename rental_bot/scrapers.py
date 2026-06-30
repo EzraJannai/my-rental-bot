@@ -4,6 +4,7 @@ from typing import Dict, List
 import hashlib
 
 import requests
+from curl_cffi import requests as cffi_requests
 from bs4 import BeautifulSoup
 
 from .config import CITY, logger
@@ -24,7 +25,12 @@ class BaseScraper:
 
     def fetch_page(self) -> str:
         logger.info(f"[{self.source}] Fetching page: {self.search_url}")
-        response = requests.get(self.search_url, headers=self.headers)
+        # Pararius/Huurwoningen sit behind Cloudflare, which blocks the TLS
+        # fingerprint of the plain `requests` library (403). curl_cffi mimics a
+        # real Chrome handshake so the request is accepted.
+        response = cffi_requests.get(
+            self.search_url, impersonate="chrome", timeout=30
+        )
         response.raise_for_status()
         return response.text
 
@@ -205,7 +211,9 @@ class HuurwoningenScraper(BaseScraper):
         listing_elements = soup.select(".listing-search-item__content")
         for element in listing_elements:
             try:
-                title_element = element.select_one("h2.listing-search-item__title a")
+                # Huurwoningen switched the title heading from <h2> to <h3>;
+                # match on the class only so both layouts keep working.
+                title_element = element.select_one(".listing-search-item__title a")
                 if not title_element:
                     continue
                 title = title_element.get_text(strip=True)
