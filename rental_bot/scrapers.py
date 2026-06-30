@@ -2,6 +2,7 @@
 from datetime import datetime
 from typing import Dict, List
 import hashlib
+import time
 
 import requests
 from curl_cffi import requests as cffi_requests
@@ -23,15 +24,34 @@ class BaseScraper:
             "Chrome/91.0.4472.124 Safari/537.36"
         }
 
+    # Cloudflare blocks the TLS fingerprint of plain `requests` (403); curl_cffi
+    # mimics a real Chrome handshake. From datacenter IPs (GitHub Actions) the
+    # 403s are intermittent — the same clean request flips between 200 and 403
+    # per run/site — so we retry across a few clean Chrome profiles. Pass NO
+    # custom headers: a bare impersonation profile is browser-consistent, while
+    # adding headers (Referer/Accept-Language) re-triggers detection.
+    IMPERSONATE_TARGETS = ["chrome", "chrome131", "chrome124"]
+    MAX_ATTEMPTS = 4
+
     def fetch_page(self) -> str:
         logger.info(f"[{self.source}] Fetching page: {self.search_url}")
-        # Cloudflare blocks the TLS fingerprint of the plain `requests` library
-        # (403). curl_cffi mimics a real Chrome handshake so the request is
-        # accepted. Note: pass no extra headers — a clean impersonation profile
-        # is browser-consistent; adding custom headers re-triggers detection.
-        response = cffi_requests.get(self.search_url, impersonate="chrome", timeout=30)
-        response.raise_for_status()
-        return response.text
+        last_exc = None
+        for attempt in range(self.MAX_ATTEMPTS):
+            target = self.IMPERSONATE_TARGETS[attempt % len(self.IMPERSONATE_TARGETS)]
+            try:
+                response = cffi_requests.get(
+                    self.search_url, impersonate=target, timeout=30
+                )
+                response.raise_for_status()
+                return response.text
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    f"[{self.source}] attempt {attempt + 1}/{self.MAX_ATTEMPTS} "
+                    f"(impersonate={target}) failed: {exc}"
+                )
+                time.sleep(2)
+        raise last_exc
 
     def fetch_listings(self) -> List[Dict]:
         try:
