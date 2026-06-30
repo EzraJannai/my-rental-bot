@@ -31,7 +31,7 @@ class BaseScraper:
     # custom headers: a bare impersonation profile is browser-consistent, while
     # adding headers (Referer/Accept-Language) re-triggers detection.
     IMPERSONATE_TARGETS = ["chrome", "chrome131", "chrome124"]
-    MAX_ATTEMPTS = 4
+    MAX_ATTEMPTS = 8
 
     def fetch_page(self) -> str:
         logger.info(f"[{self.source}] Fetching page: {self.search_url}")
