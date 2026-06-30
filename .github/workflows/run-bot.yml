@@ -1,9 +1,11 @@
 name: Run Rental Bot Every 5 Minutes
 
 on:
-  #This runs on a cron schedule: every 5 minutes on weekdays
+  # Cron requests every minute on weekdays; GitHub throttles scheduled runs in
+  # practice (often every 15-30+ min), so this just means "as often as GitHub
+  # allows" without piling up.
   schedule:
-  - cron: "*/5 * * * 1-5"
+  - cron: "* * * * 1-5"
   workflow_dispatch:
 
 jobs:
