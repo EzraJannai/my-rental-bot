@@ -1,0 +1,61 @@
+{
+  "data": [
+    {
+      "rentBuy": "Huur",
+      "dwellingType": {"categorie": "woning", "name": "Eengezinswoning"},
+      "city": {"name": "Veessen"},
+      "municipality": {"name": "Heerde"},
+      "gemeenteGeoLocatieNaam": "Heerde",
+      "totalRent": 514.65,
+      "street": "Kerkstraat",
+      "houseNumber": 23,
+      "houseNumberAddition": "C",
+      "urlKey": "770-kerkstraat-23-c-veessen"
+    },
+    {
+      "rentBuy": "Koop",
+      "dwellingType": {"categorie": "woning"},
+      "city": {"name": "Heerde"},
+      "municipality": {"name": "Heerde"},
+      "gemeenteGeoLocatieNaam": "Heerde",
+      "sellingPrice": 250000,
+      "street": "Dorpsstraat",
+      "houseNumber": 1,
+      "urlKey": "koop-dorpsstraat-1"
+    },
+    {
+      "rentBuy": "Huur",
+      "dwellingType": {"categorie": "voorVoertuig"},
+      "city": {"name": "Apeldoorn"},
+      "municipality": {"name": "Apeldoorn"},
+      "gemeenteGeoLocatieNaam": "Apeldoorn",
+      "totalRent": 90.75,
+      "street": "Treubstraat",
+      "houseNumber": 2,
+      "houseNumberAddition": "G6",
+      "urlKey": "garage-treubstraat-2-g6"
+    },
+    {
+      "rentBuy": "Huur",
+      "dwellingType": {"categorie": "woning"},
+      "city": {"name": "Zwolle"},
+      "municipality": {"name": "Zwolle"},
+      "gemeenteGeoLocatieNaam": "Zwolle",
+      "totalRent": 800,
+      "street": "Verweg",
+      "houseNumber": 5,
+      "urlKey": "zwolle-verweg-5"
+    },
+    {
+      "rentBuy": "Huur",
+      "dwellingType": {"categorie": "woning"},
+      "city": {"name": "Vaassen"},
+      "municipality": {"name": "Epe"},
+      "gemeenteGeoLocatieNaam": "Epe",
+      "totalRent": 2000,
+      "street": "Dure laan",
+      "houseNumber": 9,
+      "urlKey": "vaassen-dure-laan-9"
+    }
+  ]
+}

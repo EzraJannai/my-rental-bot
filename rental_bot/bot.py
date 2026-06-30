@@ -2,15 +2,22 @@
 from typing import List
 from urllib.parse import quote_plus
 
-from .config import CITY, PRICE_RANGE, TELEGRAM_CHAT_ID, TELEGRAM_TOKEN, logger
+from .config import (
+    LOCATIONS,
+    PRICE_MAX,
+    PRICE_RANGE,
+    TELEGRAM_CHAT_ID,
+    TELEGRAM_TOKEN,
+    logger,
+)
 from .notification import NotificationSystem
 from .scrapers import (
     BaseScraper,
     ParariusScraper,
-    WoonkeusScraper,
     HuurwoningenScraper,
     NederwoonScraper,
     Wonen123Scraper,
+    Zig365Scraper,
 )
 from .storage import ListingStorage
 
@@ -38,25 +45,65 @@ class MultiRentalBot:
         self.storage.update_with_listings(all_listings)
 
 
-def run_bot() -> None:
-    """Create scrapers and run the bot once."""
-    pararius_url = f"https://www.pararius.com/apartments/{CITY.lower()}/{PRICE_RANGE}"
-    huurwoningen_url = f"https://www.huurwoningen.nl/in/{CITY.lower()}/?price={PRICE_RANGE}"
-    nederwoon_url = f"https://www.nederwoon.nl/search?search_type=1&city={quote_plus(CITY)}"
-    wonen123_url = f"https://www.123wonen.nl/huurwoningen/in/{CITY.lower()}"
+def _location_scrapers(location: str) -> List[BaseScraper]:
+    """Build the URL-based scrapers for a single town.
 
-    scrapers = [
-        ParariusScraper(pararius_url, source="Pararius"),
-        # TODO: Woonkeus migrated from the hexia JSON API (now 404) to the
-        # JS-only zig365 platform. The listings are rendered client-side, so
-        # they can't be fetched with a plain HTTP client anymore — re-enabling
-        # requires a headless browser (e.g. Playwright). Disabled until then so
-        # it doesn't error on every run.
-        # WoonkeusScraper(source="Woonkeus"),
-        HuurwoningenScraper(huurwoningen_url, source="Huurwoningen"),
-        NederwoonScraper(nederwoon_url, source="Nederwoon"),
-        Wonen123Scraper(wonen123_url, source="123Wonen"),
+    Pararius and Huurwoningen fall back to a wider region for small villages, so
+    every scraper is given `locations=LOCATIONS` to filter the parsed results
+    back down to the towns we actually want.
+    """
+    slug = location.lower()
+    return [
+        ParariusScraper(
+            f"https://www.pararius.com/apartments/{slug}/{PRICE_RANGE}",
+            source="Pararius",
+            locations=LOCATIONS,
+        ),
+        HuurwoningenScraper(
+            f"https://www.huurwoningen.nl/in/{slug}/?price={PRICE_RANGE}",
+            source="Huurwoningen",
+            locations=LOCATIONS,
+        ),
+        NederwoonScraper(
+            f"https://www.nederwoon.nl/search?search_type=1&city={quote_plus(location)}",
+            source="Nederwoon",
+            locations=LOCATIONS,
+        ),
+        Wonen123Scraper(
+            f"https://www.123wonen.nl/huurwoningen/in/{slug}",
+            source="123Wonen",
+            locations=LOCATIONS,
+        ),
     ]
+
+
+def run_bot() -> None:
+    """Create scrapers for every configured location and run the bot once."""
+    scrapers: List[BaseScraper] = []
+    for location in LOCATIONS:
+        scrapers.extend(_location_scrapers(location))
+
+    # Social-housing platforms on zig365/hexia. One JSON call per tenant covers
+    # its whole region; results are filtered to LOCATIONS by city/municipality.
+    scrapers.extend(
+        [
+            Zig365Scraper(
+                api_host="natuurlijkhuren-aanbodapi.zig365.nl",
+                site_base_url="https://www.natuurlijkhuren.nl",
+                source="Triada (NatuurlijkHuren)",
+                locations=LOCATIONS,
+                max_price=PRICE_MAX,
+            ),
+            Zig365Scraper(
+                api_host="woonkeusstedendriehoek-aanbodapi.zig365.nl",
+                site_base_url="https://www.woonkeus-stedendriehoek.nl",
+                source="Woonkeus",
+                locations=LOCATIONS,
+                max_price=PRICE_MAX,
+                detail_path="/aanbod/nu-te-huur/huurwoningen/details/",
+            ),
+        ]
+    )
 
     bot = MultiRentalBot(scrapers)
     bot.check_for_new_listings()

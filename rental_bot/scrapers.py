@@ -1,6 +1,6 @@
 """Scraper classes for various rental websites."""
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 import hashlib
 import time
 
@@ -9,14 +9,25 @@ from curl_cffi import requests as cffi_requests
 from bs4 import BeautifulSoup
 
 from .config import CITY, logger
+from .location import address_matches_any
 
 
 class BaseScraper:
     """Base class for all scrapers."""
 
-    def __init__(self, search_url: str, user_agent: str = None, source: str = "Unknown"):
+    def __init__(
+        self,
+        search_url: str,
+        user_agent: str = None,
+        source: str = "Unknown",
+        locations: Optional[List[str]] = None,
+    ):
         self.search_url = search_url
         self.source = source
+        # When set, parsed listings are filtered to these towns so regional
+        # fallback results (e.g. Pararius returning Deventer for "Vaassen") are
+        # dropped. None means "keep everything".
+        self.locations = locations
         self.headers = {
             "User-Agent": user_agent
             or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -31,7 +42,9 @@ class BaseScraper:
     # custom headers: a bare impersonation profile is browser-consistent, while
     # adding headers (Referer/Accept-Language) re-triggers detection.
     IMPERSONATE_TARGETS = ["chrome", "chrome131", "chrome124"]
-    MAX_ATTEMPTS = 8
+    # 6 attempts balances reliability against runtime now that we fetch many
+    # location pages per run; a miss is caught on the next 5-minute run.
+    MAX_ATTEMPTS = 6
 
     def fetch_page(self) -> str:
         logger.info(f"[{self.source}] Fetching page: {self.search_url}")
@@ -57,12 +70,26 @@ class BaseScraper:
         try:
             page_content = self.fetch_page()
             soup = BeautifulSoup(page_content, "html.parser")
-            listings = self.parse_listings(soup)
+            listings = self._filter_by_location(self.parse_listings(soup))
             logger.info(f"[{self.source}] Parsed {len(listings)} listings")
             return listings
         except Exception as exc:  # pragma: no cover - network errors
             logger.error(f"[{self.source}] Error fetching listings: {exc}")
             return []
+
+    def _filter_by_location(self, listings: List[Dict]) -> List[Dict]:
+        if not self.locations:
+            return listings
+        # Some sites put the town in the title rather than the address
+        # (123Wonen: title "Apeldoorn, Koperweg"), so match against both.
+        return [
+            listing
+            for listing in listings
+            if address_matches_any(
+                f"{listing.get('address', '')} {listing.get('title', '')}",
+                self.locations,
+            )
+        ]
 
     def parse_listings(self, soup: BeautifulSoup) -> List[Dict]:
         raise NotImplementedError
@@ -312,3 +339,100 @@ class Wonen123Scraper(BaseScraper):
                 continue
         logger.info(f"[{self.source}] Parsed {len(listings)} listings")
         return listings
+
+
+class Zig365Scraper(BaseScraper):
+    """Scraper for the zig365/hexia social-housing platform (JSON API).
+
+    Covers tenants such as natuurlijkhuren.nl (Triada: Epe/Vaassen/Heerde and
+    surrounding villages) and woonkeus-stedendriehoek.nl (Apeldoorn region).
+    Each tenant exposes the same ``actueel-aanbod`` JSON feed at
+    ``{tenant}-aanbodapi.zig365.nl``, so one class handles them all. Filtering is
+    done on the structured ``city``/``municipality`` fields rather than the
+    address string.
+    """
+
+    def __init__(
+        self,
+        api_host: str,
+        site_base_url: str,
+        source: str,
+        locations: Optional[List[str]] = None,
+        max_price: Optional[int] = None,
+        detail_path: str = "/aanbod/te-huur/details/",
+        limit: int = 100,
+    ):
+        api_url = (
+            f"https://{api_host}/api/v1/actueel-aanbod?"
+            f"limit={limit}&locale=nl_NL&page=0&sort=-publicationDate"
+        )
+        super().__init__(api_url, source=source, locations=locations)
+        self.site_base_url = site_base_url.rstrip("/")
+        self.detail_path = detail_path
+        self.max_price = max_price
+
+    def fetch_listings(self) -> List[Dict]:
+        try:
+            logger.info(f"[{self.source}] Fetching listings from JSON API: {self.search_url}")
+            response = cffi_requests.get(
+                self.search_url,
+                impersonate="chrome",
+                headers={"Accept": "application/json"},
+                timeout=30,
+            )
+            response.raise_for_status()
+            listings = self.parse_items(response.json().get("data", []))
+            logger.info(f"[{self.source}] Parsed {len(listings)} listings")
+            return listings
+        except Exception as exc:  # pragma: no cover - network errors
+            logger.error(f"[{self.source}] Error fetching listings from JSON API: {exc}")
+            return []
+
+    def parse_items(self, items: List[Dict]) -> List[Dict]:
+        listings = []
+        for item in items:
+            if item.get("rentBuy") != "Huur":
+                continue
+            # Skip non-residential objects (e.g. "voorVoertuig" garages/parking).
+            categorie = (item.get("dwellingType") or {}).get("categorie", "")
+            if categorie and categorie != "woning":
+                continue
+            city = (item.get("city") or {}).get("name", "")
+            municipality = (item.get("municipality") or {}).get("name", "")
+            gemeente = item.get("gemeenteGeoLocatieNaam", "")
+            if self.locations and not self._location_allowed(city, municipality, gemeente):
+                continue
+            total_rent = item.get("totalRent")
+            if (
+                self.max_price is not None
+                and total_rent is not None
+                and float(total_rent) > self.max_price
+            ):
+                continue
+            street = item.get("street", "") or ""
+            house_number = item.get("houseNumber", "")
+            addition = item.get("houseNumberAddition") or ""
+            full_street = f"{street} {house_number}{addition}".strip()
+            town = city or gemeente or "Onbekend"
+            url_key = item.get("urlKey", "")
+            url = f"{self.site_base_url}{self.detail_path}{url_key}" if url_key else ""
+            price = f"€ {total_rent}" if total_rent is not None else "Prijs onbekend"
+            listings.append(
+                {
+                    "id": self.generate_listing_id(url),
+                    "title": full_street,
+                    "url": url,
+                    "price": price,
+                    "address": f"{full_street}, {town}",
+                    "source": self.source,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+        return listings
+
+    def _location_allowed(self, city: str, municipality: str, gemeente: str) -> bool:
+        targets = {loc.strip().lower() for loc in self.locations}
+        return any(
+            name and name.strip().lower() in targets
+            for name in (city, municipality, gemeente)
+        )

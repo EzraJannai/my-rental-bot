@@ -6,11 +6,20 @@ from .scrapers import (
     HuurwoningenScraper,
     NederwoonScraper,
     Wonen123Scraper,
+    Zig365Scraper,
 )
 from .storage import ListingStorage
 from .notification import NotificationSystem
 from .bot import MultiRentalBot, run_bot
-from .config import logger, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, CITY, PRICE_RANGE
+from .config import (
+    logger,
+    TELEGRAM_TOKEN,
+    TELEGRAM_CHAT_ID,
+    CITY,
+    LOCATIONS,
+    PRICE_RANGE,
+    PRICE_MAX,
+)
 
 __all__ = [
     "BaseScraper",
@@ -19,6 +28,7 @@ __all__ = [
     "HuurwoningenScraper",
     "NederwoonScraper",
     "Wonen123Scraper",
+    "Zig365Scraper",
     "ListingStorage",
     "NotificationSystem",
     "MultiRentalBot",
@@ -27,5 +37,7 @@ __all__ = [
     "TELEGRAM_TOKEN",
     "TELEGRAM_CHAT_ID",
     "CITY",
+    "LOCATIONS",
     "PRICE_RANGE",
+    "PRICE_MAX",
 ]
