@@ -23,30 +23,15 @@ class BaseScraper:
             "Chrome/91.0.4472.124 Safari/537.36"
         }
 
-    # Pararius/Huurwoningen sit behind Cloudflare, which blocks the TLS
-    # fingerprint of the plain `requests` library (403). curl_cffi mimics a real
-    # browser handshake. Pararius is stricter, so we retry across a few Chrome
-    # profiles until one is accepted.
-    IMPERSONATE_TARGETS = ["chrome136", "chrome131", "chrome124"]
-
     def fetch_page(self) -> str:
         logger.info(f"[{self.source}] Fetching page: {self.search_url}")
-        headers = {
-            "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
-            "Referer": "https://www.google.com/",
-        }
-        last_exc = None
-        for target in self.IMPERSONATE_TARGETS:
-            try:
-                response = cffi_requests.get(
-                    self.search_url, impersonate=target, headers=headers, timeout=30
-                )
-                response.raise_for_status()
-                return response.text
-            except Exception as exc:
-                last_exc = exc
-                logger.warning(f"[{self.source}] impersonate={target} failed: {exc}")
-        raise last_exc
+        # Cloudflare blocks the TLS fingerprint of the plain `requests` library
+        # (403). curl_cffi mimics a real Chrome handshake so the request is
+        # accepted. Note: pass no extra headers — a clean impersonation profile
+        # is browser-consistent; adding custom headers re-triggers detection.
+        response = cffi_requests.get(self.search_url, impersonate="chrome", timeout=30)
+        response.raise_for_status()
+        return response.text
 
     def fetch_listings(self) -> List[Dict]:
         try:
