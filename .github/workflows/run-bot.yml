@@ -1,4 +1,4 @@
-name: Run Rental Bot Every 5 Minutes
+name: Run Rental Bot
 
 on:
   # Cron requests every minute on weekdays; GitHub throttles scheduled runs in
